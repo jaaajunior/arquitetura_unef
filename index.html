@@ -1,0 +1,897 @@
+<title>Laboratório de Monge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Prancheta de desenho. Cor tem função: laranja-tijolo = PH (horizontal), azul = PV (vertical), verde-petróleo = o objeto no espaço. */
+:root{
+  --paper:#ECEFED; --sheet:#F8FAF8; --ink:#14202A; --ink-2:#4B5966; --rule:#C5CEC9; --chip:#E1E7E4;
+  --grid:rgba(20,32,42,.075); --grid-2:rgba(20,32,42,.16);
+  --ph:#BF4519; --pv:#1F55B3; --obj:#08766A; --ok:#1B7A43; --bad:#B3261E;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D141B; --sheet:#121C25; --ink:#E6ECF1; --ink-2:#9AA8B5; --rule:#2A3945; --chip:#1B2833;
+    --grid:rgba(230,236,241,.07); --grid-2:rgba(230,236,241,.16);
+    --ph:#F28D63; --pv:#78A6F8; --obj:#42C9B4; --ok:#5CC98A; --bad:#F2877F;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D141B; --sheet:#121C25; --ink:#E6ECF1; --ink-2:#9AA8B5; --rule:#2A3945; --chip:#1B2833;
+  --grid:rgba(230,236,241,.07); --grid-2:rgba(230,236,241,.16);
+  --ph:#F28D63; --pv:#78A6F8; --obj:#42C9B4; --ok:#5CC98A; --bad:#F2877F;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:14px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+button{font:inherit;color:inherit}
+.app{max-width:1280px;margin:0 auto;display:grid;gap:16px}
+
+/* cabeçalho em forma de legenda de prancha */
+.top{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.kicker{margin:0 0 2px;font:500 12px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+h1{margin:0;font:700 clamp(28px,5vw,40px)/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.tabs{display:flex;border:1.5px solid var(--ink);background:var(--sheet)}
+.tabs button{appearance:none;background:transparent;border:0;border-right:1.5px solid var(--ink);padding:9px 18px;font:600 14px var(--f-display);letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
+.tabs button:focus-visible,.btn:focus-visible,.chip:focus-visible,.opt:focus-visible,.vb:focus-visible,input:focus-visible,canvas:focus-visible,summary:focus-visible{outline:2px solid var(--obj);outline-offset:2px}
+
+/* palco */
+.stage{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.views{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);min-width:0}
+.side{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);min-width:0;align-content:start}
+@media (min-width:700px){
+  .views{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .side{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+}
+@media (min-width:1100px){
+  .stage{grid-template-columns:minmax(320px,370px) minmax(0,1fr);align-items:start}
+  .side{order:-1;grid-template-columns:minmax(0,1fr)}
+}
+.view{margin:0;background:var(--sheet);border:1.5px solid var(--ink);display:flex;flex-direction:column;min-width:0}
+.view figcaption{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-bottom:1.5px solid var(--ink);font:600 13px var(--f-display);letter-spacing:.12em;text-transform:uppercase}
+.view figcaption i{font:400 11px var(--f-mono);letter-spacing:.04em;text-transform:none;color:var(--ink-2);font-style:normal;margin-left:6px}
+.vbtns{display:flex;gap:4px;flex-wrap:wrap}
+.vb{appearance:none;background:transparent;border:1px solid var(--rule);padding:2px 8px;font:500 11px var(--f-mono);cursor:pointer;color:var(--ink-2)}
+.vb:hover{border-color:var(--ink);color:var(--ink)}
+canvas{display:block;width:100%;aspect-ratio:4/3;max-width:100%}
+@media (min-width:700px){canvas{aspect-ratio:1/1}}
+#cv3{cursor:grab;touch-action:none;aspect-ratio:1/1}
+.under{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;justify-content:space-between;margin:0;font-size:13px;color:var(--ink-2)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;display:inline-block;border-radius:50%}
+.sw.ph{background:var(--ph)}.sw.pv{background:var(--pv)}.sw.obj{background:var(--obj)}
+
+/* painéis laterais */
+.card{background:var(--sheet);border:1.5px solid var(--ink);padding:14px 16px 16px;min-width:0}
+.sec{margin:0 0 10px;font:600 11.5px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.sec:not(:first-child){margin-top:18px}
+.sl{display:grid;grid-template-columns:minmax(86px,auto) minmax(0,1fr) 46px;gap:8px;align-items:center;margin:0 0 2px;font-size:13px}
+.sl .sl-l{font-family:var(--f-mono);font-size:12px}
+.sl output{font:500 13px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;margin:0;height:30px;accent-color:var(--ink)}
+.k-ph input{accent-color:var(--ph)}.k-pv input{accent-color:var(--pv)}.k-obj input{accent-color:var(--obj)}
+.k-ph .sl-l{color:var(--ph)}.k-pv .sl-l{color:var(--pv)}.k-obj .sl-l{color:var(--obj)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;background:transparent;border:1.5px solid var(--ink);padding:4px 10px;font:500 12.5px var(--f-body);cursor:pointer}
+.chip:hover{background:var(--chip)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{appearance:none;background:var(--ink);color:var(--sheet);border:1.5px solid var(--ink);padding:7px 14px;font:600 13px var(--f-display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:hover:not(:disabled){filter:brightness(1.15)}
+.btn.ghost:hover:not(:disabled){background:var(--chip);filter:none}
+.btn:disabled{opacity:.4;cursor:default}
+.subpair{display:grid;gap:0}
+
+/* leitura */
+.big{margin:0 0 6px;font:600 22px/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.tag{display:inline-block;margin:0 0 10px;padding:2px 10px;border:1.5px solid var(--obj);color:var(--obj);font:600 13px var(--f-display);letter-spacing:.1em;text-transform:uppercase}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0 0 10px;font-size:13.5px}
+.kv dt{color:var(--ink-2)}.kv dd{margin:0;font-variant-numeric:tabular-nums}
+.kv dd.m,.mono{font-family:var(--f-mono);font-size:13px}
+#info p{margin:0 0 8px;font-size:14px;max-width:62ch}
+#info p.note{color:var(--ink-2);font-size:13.5px}
+.primer{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px;font-size:13.5px}
+.primer summary{cursor:pointer;font:600 12px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.primer ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px}
+.warn{color:var(--bad)}
+
+/* prática */
+.qhead{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px;font:600 12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase}
+.score{color:var(--obj)}
+.qtext{margin:0 0 10px;font-size:15px;font-weight:500}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.opt{appearance:none;background:transparent;border:1.5px solid var(--ink);padding:8px 10px;text-align:left;font:500 13.5px/1.3 var(--f-body);cursor:pointer}
+.opt:hover:not(:disabled){background:var(--chip)}
+.opt:disabled{cursor:default}
+.opt[data-state="ok"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}
+.opt[data-state="bad"]{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,transparent)}
+.steps{margin:0 0 8px;padding-left:20px;display:grid;gap:4px;font-size:14px}
+.steps li{color:var(--ink-2)}.steps li.now{color:var(--ink);font-weight:600}.steps li.done{color:var(--ok)}
+.verdict{margin:0 0 8px;font:700 18px var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--bad)}
+@media (max-width:560px){
+  .tabs{width:100%}.tabs button{flex:1;padding-inline:6px}
+  .card{padding:12px 12px 14px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <p class="kicker">Geometria Descritiva · Método de Monge</p>
+      <h1>Laboratório de Monge</h1>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Módulos">
+      <button role="tab" data-mod="ponto" aria-selected="true">Ponto</button>
+      <button role="tab" data-mod="reta" aria-selected="false">Reta</button>
+      <button role="tab" data-mod="plano" aria-selected="false">Plano</button>
+      <button role="tab" data-mod="prat" aria-selected="false">Praticar</button>
+    </nav>
+  </header>
+
+  <div class="stage">
+    <div class="views">
+      <figure class="view">
+        <figcaption>
+          <span>Espaço<i>perspectiva</i></span>
+          <span class="vbtns" aria-label="Pontos de vista">
+            <button class="vb" data-act="view" data-v="persp">perspectiva</button>
+            <button class="vb" data-act="view" data-v="front">frente</button>
+            <button class="vb" data-act="view" data-v="top">cima</button>
+            <button class="vb" data-act="view" data-v="side">lado</button>
+          </span>
+        </figcaption>
+        <canvas id="cv3" tabindex="0" role="img" aria-label="Perspectiva dos planos de projeção"></canvas>
+      </figure>
+      <figure class="view">
+        <figcaption><span>Épura<i>PH rebatido sobre o PV</i></span></figcaption>
+        <canvas id="cvE" role="img" aria-label="Épura"></canvas>
+      </figure>
+      <p class="under">
+        <span class="legend" aria-label="Legenda de cores">
+          <span><i class="sw ph"></i>PH · A′, αh</span>
+          <span><i class="sw pv"></i>PV · A″, αv</span>
+          <span><i class="sw obj"></i>no espaço</span>
+        </span>
+        <span id="hint"></span>
+      </p>
+    </div>
+
+    <div class="side">
+      <section class="card" id="ctl" aria-label="Controles"></section>
+      <section class="card" id="info" aria-live="polite" aria-label="Leitura"></section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= utilidades ================= */
+const R=7, DIST=34, EPS=1e-9;
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const zero=v=>Math.abs(v)<EPS?0:v;
+const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+const fv=v=>{v=zero(Math.round(v*100)/100);return (v<0?'−':'')+String(Math.abs(v)).replace('.',',');};
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const snap=(v,s)=>Math.round(v/s)*s;
+
+/* ================= estado ================= */
+const st={
+  mod:'ponto', theta:0,
+  ponto:{x:2,y:3,z:4},
+  reta:{A:{x:-3,y:1,z:5},B:{x:3,y:5,z:1}},
+  plano:{tipo:'obl',x0:-1,ah:60,av:50,y0:4,z0:3,k:3,t:35}
+};
+const cam={yaw:.62,pitch:.42,ty:null,tp:null};
+const pr={kind:'todos',q:null,answered:false,choice:null,ok:0,total:0,n:0,guesses:[]};
+const getp=p=>p.split('.').reduce((o,k)=>o[k],st);
+const setp=(p,v)=>{const ks=p.split('.');const l=ks.pop();ks.reduce((o,k)=>o[k],st)[l]=v;};
+
+/* ================= geometria ================= */
+function posPonto(p){
+  const y=zero(p.y), z=zero(p.z);
+  if(y===0&&z===0) return {id:'LT',dih:0,nome:'Pertence à LT',expl:'Cota e afastamento nulos: A, A′ e A″ coincidem sobre a LT.'};
+  if(z===0) return y>0
+    ? {id:'PH',dih:0,nome:'Pertence ao PH anterior',expl:'Cota nula: A pertence ao PH, logo A ≡ A′ e A″ fica sobre a LT. Está na fronteira entre o 1º e o 4º diedros.'}
+    : {id:'PH',dih:0,nome:'Pertence ao PH posterior',expl:'Cota nula: A pertence ao PH, logo A ≡ A′ e A″ fica sobre a LT. Está na fronteira entre o 2º e o 3º diedros.'};
+  if(y===0) return z>0
+    ? {id:'PV',dih:0,nome:'Pertence ao PV superior',expl:'Afastamento nulo: A pertence ao PV, logo A ≡ A″ e A′ fica sobre a LT. Está na fronteira entre o 1º e o 2º diedros.'}
+    : {id:'PV',dih:0,nome:'Pertence ao PV inferior',expl:'Afastamento nulo: A pertence ao PV, logo A ≡ A″ e A′ fica sobre a LT. Está na fronteira entre o 3º e o 4º diedros.'};
+  if(y>0&&z>0) return {id:'1',dih:1,nome:'1º diedro',expl:'Cota positiva (acima do PH) e afastamento positivo (à frente do PV): A′ fica abaixo da LT e A″ acima dela.'};
+  if(y<0&&z>0) return {id:'2',dih:2,nome:'2º diedro',expl:'Cota positiva (acima do PH) e afastamento negativo (atrás do PV): A′ e A″ ficam ambos acima da LT.'};
+  if(y<0&&z<0) return {id:'3',dih:3,nome:'3º diedro',expl:'Cota negativa (abaixo do PH) e afastamento negativo (atrás do PV): A′ fica acima da LT e A″ abaixo dela.'};
+  return {id:'4',dih:4,nome:'4º diedro',expl:'Cota negativa (abaixo do PH) e afastamento positivo (à frente do PV): A′ e A″ ficam ambos abaixo da LT.'};
+}
+function bisPonto(p){
+  const y=zero(p.y), z=zero(p.z);
+  if(y===0||z===0) return '';
+  if(y===z) return 'Afastamento igual à cota: A pertence ao plano bissetor dos diedros ímpares (β₁). As projeções ficam simétricas em relação à LT.';
+  if(y===-z) return 'Afastamento oposto à cota: A pertence ao plano bissetor dos diedros pares (β₂). As projeções A′ e A″ coincidem na épura.';
+  return '';
+}
+function classReta(d){
+  const X=d[0]!==0,Y=d[1]!==0,Z=d[2]!==0;
+  if(!X&&!Y&&!Z) return 'ponto';
+  if(X&&!Y&&!Z) return 'fronto';
+  if(!X&&!Y&&Z) return 'vertical';
+  if(!X&&Y&&!Z) return 'topo';
+  if(!X&&Y&&Z) return 'perfil';
+  if(X&&Y&&!Z) return 'horizontal';
+  if(X&&!Y&&Z) return 'frontal';
+  return 'qualquer';
+}
+function analisaReta(A,B){
+  const d=[zero(B.x-A.x),zero(B.y-A.y),zero(B.z-A.z)];
+  const id=classReta(d), L=Math.hypot(d[0],d[1],d[2]);
+  const o={id,d,L,H:null,V:null,angH:0,angV:0};
+  if(L>0){ o.angH=deg(Math.asin(clamp(Math.abs(d[2])/L,0,1))); o.angV=deg(Math.asin(clamp(Math.abs(d[1])/L,0,1))); }
+  if(d[2]!==0){const t=-A.z/d[2]; o.H={t,x:A.x+t*d[0],y:A.y+t*d[1]};}
+  if(d[1]!==0){const t=-A.y/d[1]; o.V={t,x:A.x+t*d[0],z:A.z+t*d[2]};}
+  o.noPH=d[2]===0&&zero(A.z)===0; o.noPV=d[1]===0&&zero(A.y)===0;
+  return o;
+}
+function lineRange(A,d){
+  if(d[0]===0&&d[1]===0&&d[2]===0) return [0,0];
+  let t0=-1e9,t1=1e9; const a=[A.x,A.y,A.z];
+  for(let i=0;i<3;i++){
+    if(Math.abs(d[i])<EPS){ if(Math.abs(a[i])>R) return null; }
+    else{ let u=(-R-a[i])/d[i], v=(R-a[i])/d[i]; if(u>v){const s=u;u=v;v=s;} t0=Math.max(t0,u); t1=Math.min(t1,v); }
+  }
+  return t0<=t1?[t0,t1]:null;
+}
+function planeFromParams(pl){
+  let n,d,x0=null;
+  if(pl.tipo==='obl'){
+    const ah=rad(pl.ah), av=rad(pl.av);
+    n=[-Math.sin(ah)*Math.sin(av),-Math.cos(ah)*Math.sin(av),Math.sin(ah)*Math.cos(av)]; x0=pl.x0; d=null;
+  }else if(pl.tipo==='par'){
+    const y0=Math.abs(pl.y0)<.5?(pl.y0<0?-.5:.5):pl.y0, z0=Math.abs(pl.z0)<.5?(pl.z0<0?-.5:.5):pl.z0;
+    n=[0,1/y0,1/z0]; d=1;
+  }else if(pl.tipo==='hor'){ n=[0,0,1]; d=pl.k; }
+  else if(pl.tipo==='fro'){ n=[0,1,0]; d=pl.k; }
+  else if(pl.tipo==='per'){ n=[1,0,0]; d=pl.k; }
+  else { const a=rad(pl.t); n=[0,-Math.sin(a),Math.cos(a)]; d=0; }
+  n=n.map(zero);
+  if(d===null) d=n[0]*x0;
+  const m=Math.hypot(n[0],n[1],n[2]);
+  n=n.map(v=>zero(v/m)); d=zero(d/m);
+  return {n,d,x0,tipo:pl.tipo};
+}
+const PLANO_INFO={
+  horizontal:{nome:'Plano horizontal',def:'Paralelo ao PH e perpendicular ao PV: todos os pontos têm a mesma cota.',tr:'Não tem traço horizontal. O traço vertical αv é paralelo à LT.'},
+  frontal:{nome:'Plano frontal',def:'Paralelo ao PV e perpendicular ao PH: todos os pontos têm o mesmo afastamento.',tr:'Não tem traço vertical. O traço horizontal αh é paralelo à LT.'},
+  perfil:{nome:'Plano de perfil',def:'Perpendicular à LT, portanto ao PH e ao PV: todos os pontos têm a mesma abscissa.',tr:'αh e αv são perpendiculares à LT e ficam no mesmo alinhamento.'},
+  vertical:{nome:'Plano vertical',def:'Perpendicular ao PH e oblíquo ao PV. É projetante horizontal.',tr:'αv é perpendicular à LT e αh é oblíquo. Tudo o que está no plano se projeta horizontalmente sobre αh.'},
+  topo:{nome:'Plano de topo',def:'Perpendicular ao PV e oblíquo ao PH. É projetante vertical.',tr:'αh é perpendicular à LT e αv é oblíquo. Tudo o que está no plano se projeta verticalmente sobre αv.'},
+  paralelo:{nome:'Plano paralelo à LT',def:'Oblíquo ao PH e ao PV, mas paralelo à LT.',tr:'αh e αv são ambos paralelos à LT.'},
+  contem:{nome:'Plano que contém a LT',def:'Oblíquo ao PH e ao PV e passa pela LT.',tr:'αh e αv coincidem com a LT. Para representá-lo é preciso um terceiro plano de projeção (de perfil).'},
+  qualquer:{nome:'Plano oblíquo',def:'Oblíquo ao PH e ao PV e não paralelo à LT.',tr:'αh e αv são oblíquos à LT e concorrem num ponto da LT.'}
+};
+function classPlane(def){
+  const [a,b,c]=def.n, d=zero(def.d);
+  const A=a!==0,B=b!==0,C2=c!==0;
+  let id;
+  if(!A&&!B&&C2) id='horizontal';
+  else if(!A&&B&&!C2) id='frontal';
+  else if(A&&!B&&!C2) id='perfil';
+  else if(!A&&B&&C2) id=d===0?'contem':'paralelo';
+  else if(A&&B&&!C2) id='vertical';
+  else if(A&&!B&&C2) id='topo';
+  else id='qualquer';
+  const o={id,...PLANO_INFO[id]};
+  o.angH=deg(Math.acos(clamp(Math.abs(c),0,1)));
+  o.angV=deg(Math.acos(clamp(Math.abs(b),0,1)));
+  o.contem=id==='contem';
+  o.nota='';
+  if(id==='horizontal'&&d===0) o.nota='Com cota 0, o plano coincide com o próprio PH.';
+  if(id==='frontal'&&d===0) o.nota='Com afastamento 0, o plano coincide com o próprio PV.';
+  if(id==='contem'){
+    if(Math.abs(Math.abs(b)-Math.abs(c))<1e-6) o.nota=b*c<0?'É o plano bissetor dos diedros ímpares (β₁): afastamento igual à cota.':'É o plano bissetor dos diedros pares (β₂): afastamento oposto à cota.';
+  }
+  return o;
+}
+function clipLine(a,b,c,xr,er){ // a*u + b*v = c dentro de [-xr,xr]x[-er,er]
+  const pts=[]; const add=(u,v)=>{ if(!pts.some(p=>Math.hypot(p.u-u,p.v-v)<1e-6)) pts.push({u,v}); };
+  if(Math.abs(b)>EPS) for(const u of [-xr,xr]){ const v=(c-a*u)/b; if(Math.abs(v)<=er+1e-9) add(u,v); }
+  if(Math.abs(a)>EPS) for(const v of [-er,er]){ const u=(c-b*v)/a; if(Math.abs(u)<=xr+1e-9) add(u,v); }
+  if(pts.length<2) return null;
+  let best=null,bd=-1;
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dd=Math.hypot(pts[i].u-pts[j].u,pts[i].v-pts[j].v); if(dd>bd){bd=dd;best=[pts[i],pts[j]];}}
+  return best;
+}
+function planePoly(n,d){
+  const pts=[]; const add=p=>{ if(!pts.some(q=>Math.hypot(q[0]-p[0],q[1]-p[1],q[2]-p[2])<1e-6)) pts.push(p); };
+  for(let i=0;i<3;i++){
+    const j=(i+1)%3,k=(i+2)%3; if(Math.abs(n[i])<EPS) continue;
+    for(const sj of [-R,R]) for(const sk of [-R,R]){
+      const t=(d-n[j]*sj-n[k]*sk)/n[i];
+      if(Math.abs(t)<=R+1e-9){ const p=[0,0,0]; p[i]=t;p[j]=sj;p[k]=sk; add(p); }
+    }
+  }
+  if(pts.length<3) return null;
+  const c=[0,1,2].map(i=>pts.reduce((s,p)=>s+p[i],0)/pts.length);
+  let u=Math.abs(n[0])>.9?[0,1,0]:[1,0,0];
+  const dp=u[0]*n[0]+u[1]*n[1]+u[2]*n[2]; u=u.map((v,i)=>v-dp*n[i]);
+  const ul=Math.hypot(...u); u=u.map(v=>v/ul);
+  const v=[n[1]*u[2]-n[2]*u[1],n[2]*u[0]-n[0]*u[2],n[0]*u[1]-n[1]*u[0]];
+  pts.sort((p,q)=>{
+    const ap=Math.atan2((p[0]-c[0])*v[0]+(p[1]-c[1])*v[1]+(p[2]-c[2])*v[2],(p[0]-c[0])*u[0]+(p[1]-c[1])*u[1]+(p[2]-c[2])*u[2]);
+    const aq=Math.atan2((q[0]-c[0])*v[0]+(q[1]-c[1])*v[1]+(q[2]-c[2])*v[2],(q[0]-c[0])*u[0]+(q[1]-c[1])*u[1]+(q[2]-c[2])*u[2]);
+    return ap-aq;
+  });
+  return {pts,c};
+}
+
+/* ================= canvas ================= */
+const cv3=$('#cv3'), cvE=$('#cvE');
+const ctx3=cv3.getContext('2d'), ctxE=cvE.getContext('2d');
+let W3=0,H3=0,sc3=10,WE=0,HE=0,scE=10;
+let C={};
+function readColors(){
+  const cs=getComputedStyle(document.documentElement); const g=n=>cs.getPropertyValue(n).trim();
+  C={sheet:g('--sheet'),ink:g('--ink'),ink2:g('--ink-2'),grid:g('--grid'),grid2:g('--grid-2'),ph:g('--ph'),pv:g('--pv'),obj:g('--obj'),rule:g('--rule'),ok:g('--ok'),bad:g('--bad')};
+}
+function withA(c,a){
+  if(c[0]==='#'){let h=c.slice(1);if(h.length===3)h=h.split('').map(x=>x+x).join('');const n=parseInt(h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
+  const m=c.match(/rgba?\(([^)]+)\)/); if(m){const p=m[1].split(',').map(s=>s.trim());return `rgba(${p[0]},${p[1]},${p[2]},${a})`;}
+  return c;
+}
+function fit(cv,ctx){
+  const r=cv.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1,2.5);
+  const w=Math.max(10,Math.round(r.width)), h=Math.max(10,Math.round(r.height));
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  ctx.setTransform(dpr,0,0,dpr,0,0); return [w,h];
+}
+function ln(g,a,b,col,w,dash,alpha){
+  g.save(); if(alpha!=null)g.globalAlpha=alpha; g.strokeStyle=col; g.lineWidth=w||1; g.setLineDash(dash||[]); g.lineCap='round';
+  g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke(); g.restore();
+}
+function path(g,pts,col,w,dash,alpha){
+  if(pts.length<2)return; g.save(); if(alpha!=null)g.globalAlpha=alpha; g.strokeStyle=col; g.lineWidth=w||1; g.setLineDash(dash||[]); g.lineCap='round'; g.lineJoin='round';
+  g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y)); g.stroke(); g.restore();
+}
+function poly(g,pts,fill,stroke,w,dash){
+  if(pts.length<3)return; g.save(); g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y)); g.closePath();
+  if(fill){g.fillStyle=fill;g.fill();} if(stroke){g.strokeStyle=stroke;g.lineWidth=w||1;g.setLineDash(dash||[]);g.lineJoin='round';g.stroke();} g.restore();
+}
+function dot(g,p,r,fill,stroke,w){
+  g.save(); g.beginPath(); g.arc(p.x,p.y,r,0,Math.PI*2); if(fill){g.fillStyle=fill;g.fill();} if(stroke){g.strokeStyle=stroke;g.lineWidth=w||1.5;g.stroke();} g.restore();
+}
+function txt(g,s,x,y,col,o){
+  o=o||{}; g.save(); g.font=`${o.bold?600:400} ${o.size||12}px ${o.f||'"IBM Plex Mono",ui-monospace,monospace'}`;
+  g.textAlign=o.align||'left'; g.textBaseline=o.base||'alphabetic'; if(o.alpha!=null)g.globalAlpha=o.alpha;
+  if(o.halo!==false){g.lineJoin='round';g.lineWidth=3.5;g.strokeStyle=C.sheet;g.strokeText(s,x,y);}
+  g.fillStyle=col; g.fillText(s,x,y); g.restore();
+}
+const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+
+/* ================= espaço 3D ================= */
+function P3(x,y,z){ // x abscissa, y afastamento (para o observador), z cota (para cima)
+  const cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
+  const x1=cy*x+sy*y, z1=-sy*x+cy*y;
+  const cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
+  const y2=cp*z-sp*z1, z2=sp*z+cp*z1;
+  const k=DIST/(DIST-z2);
+  return {x:W3/2+x1*k*sc3,y:H3/2-y2*k*sc3,d:z2};
+}
+const PH3=(x,y,th)=>P3(x,y*Math.cos(th),-y*Math.sin(th));
+
+function planes3(th){
+  const g=ctx3;
+  const pvC=[[-R,-R],[R,-R],[R,R],[-R,R]].map(([x,z])=>P3(x,0,z));
+  poly(g,pvC,withA(C.pv,.08),withA(C.pv,.85),1.5);
+  for(let i=-6;i<=6;i+=2){ ln(g,P3(i,0,-R),P3(i,0,R),withA(C.pv,.18),1); ln(g,P3(-R,0,i),P3(R,0,i),withA(C.pv,.18),1); }
+  const back=[[-R,-R],[R,-R],[R,0],[-R,0]].map(([x,y])=>PH3(x,y,th));
+  const front=[[-R,0],[R,0],[R,R],[-R,R]].map(([x,y])=>PH3(x,y,th));
+  poly(g,back,withA(C.ph,.05)); poly(g,front,withA(C.ph,.12));
+  for(let i=-6;i<=6;i+=2){ ln(g,PH3(i,-R,th),PH3(i,R,th),withA(C.ph,.2),1); ln(g,PH3(-R,i,th),PH3(R,i,th),withA(C.ph,.2),1); }
+  poly(g,[[-R,-R],[R,-R],[R,R],[-R,R]].map(([x,y])=>PH3(x,y,th)),null,withA(C.ph,.9),1.5);
+  // LT
+  ln(g,P3(-R-.6,0,0),P3(R+.6,0,0),C.ink,2.8);
+  for(let i=-6;i<=6;i++){ ln(g,PH3(i,0,th),PH3(i,.25,th),C.ink,1); if(i%2===0) txt(g,String(i),PH3(i,.95,th).x,PH3(i,.95,th).y,C.ink2,{size:9.5,align:'center',base:'middle',alpha:.9}); }
+  const lt=P3(R+.7,0,0); txt(g,'LT',lt.x+4,lt.y+4,C.ink,{size:13,bold:true,f:'"Barlow Semi Condensed",sans-serif'});
+  const pvl=P3(-R+.3,0,R-.7); txt(g,'PV',pvl.x,pvl.y,C.pv,{size:14,bold:true,f:'"Barlow Semi Condensed",sans-serif'});
+  const phl=PH3(R-.2,R-.9,th); txt(g,'PH',phl.x,phl.y,C.ph,{size:14,bold:true,f:'"Barlow Semi Condensed",sans-serif',align:'right'});
+  const fa=1-clamp(th/(Math.PI/2)*1.4,0,1);
+  const sub=(s,p,c)=>txt(g,s,p.x,p.y,c,{size:9.5,align:'center',alpha:.85,halo:true});
+  sub('PH anterior',PH3(0,R-.55,th),C.ph); sub('PH posterior',PH3(0,-R+.55,th),C.ph);
+  sub('PV superior',P3(-3.4,0,R-.55),C.pv); sub('PV inferior',P3(-3.4,0,-R+.55),C.pv);
+  // diedros
+  if(fa>0){
+    const cur=st.mod==='ponto'?posPonto(st.ponto).dih:0;
+    [[1,3.6,3.6],[2,-3.6,3.6],[3,-3.6,-3.6],[4,3.6,-3.6]].forEach(([n,y,z])=>{
+      const p=P3(-R+.1,y,z), on=cur===n;
+      txt(g,n+'º',p.x,p.y,on?C.obj:C.ink2,{size:on?19:15,bold:true,f:'"Barlow Semi Condensed",sans-serif',align:'center',base:'middle',alpha:(on?1:.75)*fa});
+    });
+  }
+}
+function pt3(p,nm,th,o){
+  const g=ctx3, k=Math.max(0,1-th/(Math.PI/2));
+  const A=P3(p.x,p.y,p.z), A2=P3(p.x,0,p.z), A1=PH3(p.x,p.y,th), Ax=P3(p.x,0,0);
+  if(th>.01&&Math.abs(p.y)>EPS){ const pts=[]; for(let i=0;i<=24;i++) pts.push(PH3(p.x,p.y,th*i/24)); path(g,pts,C.ph,1.4,[2,4],.9); }
+  if(Math.abs(p.y)>EPS) ln(g,A,A2,C.pv,1.4,[5,4]);
+  if(Math.abs(p.z)>EPS&&k>0) ln(g,A,A1,C.ph,1.4,[5,4],k);
+  ln(g,A2,Ax,C.pv,1.9); ln(g,Ax,A1,C.ph,1.9);
+  if(o&&o.dims&&k>.2){
+    if(Math.abs(p.z)>EPS){const m=mid(A,A1); txt(g,'z='+fv(p.z),m.x+8,m.y+4,C.pv,{size:11,alpha:k});}
+    if(Math.abs(p.y)>EPS){const m=mid(A,A2); txt(g,'y='+fv(p.y),m.x+8,m.y+4,C.ph,{size:11,alpha:k});}
+  }
+  dot(g,A1,4.4,C.ph,C.sheet,1.5); dot(g,A2,4.4,C.pv,C.sheet,1.5); dot(g,A,5.8,C.obj,C.sheet,2);
+  txt(g,nm,A.x+9,A.y-9,C.obj,{size:14,bold:true});
+  if(Math.abs(p.z)>EPS) txt(g,nm+"'",A1.x+8,A1.y+15,C.ph,{size:12});
+  if(Math.abs(p.y)>EPS) txt(g,nm+"''",A2.x+8,A2.y-8,C.pv,{size:12});
+}
+function reta3(A0,B0,th){
+  const g=ctx3, ar=analisaReta(A0,B0), d=ar.d, k=Math.max(0,1-th/(Math.PI/2));
+  if(ar.id==='ponto'){ pt3(A0,'A',th,{}); return; }
+  const rng=lineRange(A0,d); const at=t=>({x:A0.x+t*d[0],y:A0.y+t*d[1],z:A0.z+t*d[2]});
+  const A=P3(A0.x,A0.y,A0.z),B=P3(B0.x,B0.y,B0.z);
+  const A2=P3(A0.x,0,A0.z),B2=P3(B0.x,0,B0.z),A1=PH3(A0.x,A0.y,th),B1=PH3(B0.x,B0.y,th);
+  const f=Math.max(0,1-th/.2);
+  if(f>0){ poly(g,[A,B,B2,A2],withA(C.pv,.13*f)); poly(g,[A,B,B1,A1],withA(C.ph,.13*f)); }
+  if(rng){
+    const a=at(rng[0]),b=at(rng[1]);
+    ln(g,P3(a.x,a.y,a.z),P3(b.x,b.y,b.z),C.obj,1.5,[6,5],.85);
+    ln(g,P3(a.x,0,a.z),P3(b.x,0,b.z),C.pv,1.3,[6,5],.7);
+    ln(g,PH3(a.x,a.y,th),PH3(b.x,b.y,th),C.ph,1.3,[6,5],.7);
+  }
+  [[A0,A,A1,A2],[B0,B,B1,B2]].forEach(([P,Q,Q1,Q2])=>{
+    if(Math.abs(P.y)>EPS) ln(g,Q,Q2,C.pv,1.2,[5,4],.9);
+    if(Math.abs(P.z)>EPS&&k>0) ln(g,Q,Q1,C.ph,1.2,[5,4],k*.9);
+    const Qx=P3(P.x,0,0); ln(g,Q2,Qx,C.pv,1.2,null,.9); ln(g,Qx,Q1,C.ph,1.2,null,.9);
+  });
+  if(th>.01){ [A0,B0].forEach(P=>{ if(Math.abs(P.y)>EPS){const pts=[];for(let i=0;i<=20;i++)pts.push(PH3(P.x,P.y,th*i/20)); path(g,pts,C.ph,1.2,[2,4],.8);} }); }
+  ln(g,B2,A2,C.pv,2.6); ln(g,B1,A1,C.ph,2.6); ln(g,A,B,C.obj,3);
+  [[A1,'A\''],[B1,'B\'']].forEach(([p,s])=>{dot(g,p,3.6,C.ph,C.sheet,1.2); txt(g,s,p.x+7,p.y+14,C.ph,{size:11.5});});
+  [[A2,'A\'\''],[B2,'B\'\'']].forEach(([p,s])=>{dot(g,p,3.6,C.pv,C.sheet,1.2); txt(g,s,p.x+7,p.y-7,C.pv,{size:11.5});});
+  [[A,'A'],[B,'B']].forEach(([p,s])=>{dot(g,p,5,C.obj,C.sheet,2); txt(g,s,p.x+9,p.y-9,C.obj,{size:14,bold:true});});
+  const inR=t=>rng&&t>=rng[0]-1e-9&&t<=rng[1]+1e-9;
+  if(ar.H&&inR(ar.H.t)){ const h=PH3(ar.H.x,ar.H.y,th); if(th>.02) dot(g,P3(ar.H.x,ar.H.y,0),3.5,null,withA(C.ph,.6),1.2); dot(g,h,5,C.sheet,C.ph,2.2); txt(g,'H',h.x+8,h.y+15,C.ph,{size:13,bold:true}); }
+  if(ar.V&&inR(ar.V.t)){ const v=P3(ar.V.x,0,ar.V.z); dot(g,v,5,C.sheet,C.pv,2.2); txt(g,'V',v.x+8,v.y-8,C.pv,{size:13,bold:true}); }
+}
+function plano3(def,th){
+  const g=ctx3;
+  const pp=planePoly(def.n,def.d);
+  if(pp){ poly(g,pp.pts.map(p=>P3(p[0],p[1],p[2])),withA(C.obj,.17),withA(C.obj,.85),1.6); const v0=pp.pts[0], lc=[0,1,2].map(i=>pp.c[i]+(v0[i]-pp.c[i])*.62), c=P3(lc[0],lc[1],lc[2]); txt(g,'α',c.x,c.y,C.obj,{size:20,bold:true,f:'"Barlow Semi Condensed",sans-serif',align:'center',base:'middle'}); }
+  const [nx,ny,nz]=def.n,d=def.d, ci=classPlane(def);
+  if(ci.contem){ ln(g,P3(-R-.6,0,0),P3(R+.6,0,0),C.obj,4.5); return; }
+  if(nx!==0||ny!==0){ const s=clipLine(nx,ny,d,R,R); if(s){ const a=PH3(s[0].u,s[0].v,th),b=PH3(s[1].u,s[1].v,th); ln(g,a,b,C.ph,3.4); const m=mid(a,b); txt(g,'αh',m.x+8,m.y+14,C.ph,{size:13,bold:true}); } }
+  if(nx!==0||nz!==0){ const s=clipLine(nx,nz,d,R,R); if(s){ const a=P3(s[0].u,0,s[0].v),b=P3(s[1].u,0,s[1].v); ln(g,a,b,C.pv,3.4); const m=mid(a,b); txt(g,'αv',m.x+8,m.y-8,C.pv,{size:13,bold:true}); } }
+}
+function sceneObj(){
+  if(st.mod==='ponto') return {kind:'ponto',p:st.ponto};
+  if(st.mod==='reta') return {kind:'reta',A:st.reta.A,B:st.reta.B};
+  if(st.mod==='plano') return {kind:'plano',def:planeFromParams(st.plano)};
+  return pr.answered?pr.q.obj:null;
+}
+function draw3(){
+  const [w,h]=fit(cv3,ctx3); W3=w;H3=h; sc3=Math.min(w/19.5,h/21);
+  const g=ctx3; g.clearRect(0,0,w,h); g.fillStyle=C.sheet; g.fillRect(0,0,w,h);
+  const th=rad(st.theta);
+  planes3(th);
+  const o=sceneObj();
+  if(o){ if(o.kind==='ponto') pt3(o.p,'A',th,{dims:st.mod==='ponto'}); else if(o.kind==='reta') reta3(o.A,o.B,th); else plano3(o.def,th); }
+  else txt(g,'A figura no espaço aparece depois da sua resposta.',w/2,h-14,C.ink2,{size:11.5,align:'center',f:'"IBM Plex Sans",sans-serif'});
+}
+
+/* ================= épura ================= */
+const ex=x=>WE/2+x*scE, ey=e=>HE/2-e*scE;
+const EP=(x,e)=>({x:ex(x),y:ey(e)});
+let handles=[];
+function epBase(){
+  const g=ctxE; g.clearRect(0,0,WE,HE); g.fillStyle=C.sheet; g.fillRect(0,0,WE,HE);
+  const xm=WE/2/scE, em=HE/2/scE;
+  for(let i=Math.ceil(-xm);i<=xm;i++) ln(g,{x:ex(i),y:0},{x:ex(i),y:HE},i%5===0?C.grid2:C.grid,1);
+  for(let i=Math.ceil(-em);i<=em;i++) ln(g,{x:0,y:ey(i)},{x:WE,y:ey(i)},i%5===0?C.grid2:C.grid,1);
+  ln(g,{x:0,y:ey(0)},{x:WE,y:ey(0)},C.ink,2.4);
+  for(let i=Math.ceil(-xm);i<=xm;i++){ ln(g,{x:ex(i),y:ey(0)-4},{x:ex(i),y:ey(0)+4},C.ink,1); if(i%2===0&&i!==0) txt(g,String(i),ex(i),ey(0)+17,C.ink2,{size:9.5,align:'center',alpha:.9}); }
+  txt(g,'LT',WE-8,ey(0)-9,C.ink,{size:13,bold:true,f:'"Barlow Semi Condensed",sans-serif',align:'right'});
+  txt(g,'PV  ↑ cota z',8,16,C.pv,{size:11,bold:true});
+  txt(g,'PH  ↓ afastamento y',8,HE-9,C.ph,{size:11,bold:true});
+}
+function pairLabel(g,p1,p2,s1,s2,col,dx,dy){
+  if(Math.hypot(p1.x-p2.x,p1.y-p2.y)<3) txt(g,s1+'≡'+s2,p1.x+dx,p1.y+dy,col,{size:11.5});
+  else{ txt(g,s1,p1.x+dx,p1.y+dy,col,{size:11.5}); txt(g,s2,p2.x+dx,p2.y+dy,col,{size:11.5}); }
+}
+function ep_pt(p,nm,o){
+  const g=ctxE; o=o||{};
+  const A2=EP(p.x,p.z), A1=EP(p.x,-p.y);
+  ln(g,A2,A1,C.ink,1.4,null,.9);
+  if(o.dims){
+    const xd=p.x+.55;
+    [[p.z,C.pv,'z='],[-p.y,C.ph,'y=']].forEach(([e,col,l],i)=>{
+      if(Math.abs(e)<EPS) return;
+      const a=EP(xd,0), b=EP(xd,e); ln(g,a,b,col,1.1,null,.9); ln(g,{x:a.x-3,y:a.y},{x:a.x+3,y:a.y},col,1.1); ln(g,{x:b.x-3,y:b.y},{x:b.x+3,y:b.y},col,1.1);
+      txt(g,l+fv(i===0?p.z:p.y),b.x+(e>0?6:6),(a.y+b.y)/2+4,col,{size:10.5});
+    });
+  }
+  if(o.handles){ [A1,A2].forEach(q=>dot(g,q,11,withA(C.ink,.07),withA(C.ink,.35),1)); }
+  if(Math.hypot(A1.x-A2.x,A1.y-A2.y)<3){ dot(g,A1,5,C.ph,C.pv,2.2); txt(g,nm+"'≡"+nm+"''",A1.x+9,A1.y-9,C.ink,{size:12}); }
+  else{ dot(g,A2,5,C.pv,C.sheet,1.5); dot(g,A1,5,C.ph,C.sheet,1.5); txt(g,nm+"''",A2.x+9,A2.y-9,C.pv,{size:12}); txt(g,nm+"'",A1.x+9,A1.y+16,C.ph,{size:12}); }
+  if(o.handles){ handles.push({id:'p2',x:A2.x,y:A2.y},{id:'p1',x:A1.x,y:A1.y}); }
+}
+function ep_reta(A0,B0,o){
+  const g=ctxE; o=o||{}; const ar=analisaReta(A0,B0), d=ar.d;
+  if(ar.id==='ponto'){ ep_pt(A0,'A',{}); return; }
+  const rng=lineRange(A0,d); const at=t=>({x:A0.x+t*d[0],y:A0.y+t*d[1],z:A0.z+t*d[2]});
+  if(rng){ const a=at(rng[0]),b=at(rng[1]);
+    ln(g,EP(a.x,a.z),EP(b.x,b.z),C.pv,1.5,[7,5],.8); ln(g,EP(a.x,-a.y),EP(b.x,-b.y),C.ph,1.5,[7,5],.8); }
+  [A0,B0].forEach(P=>ln(g,EP(P.x,P.z),EP(P.x,-P.y),C.ink,1.1,null,.55));
+  const a2=EP(A0.x,A0.z),b2=EP(B0.x,B0.z),a1=EP(A0.x,-A0.y),b1=EP(B0.x,-B0.y);
+  ln(g,a2,b2,C.pv,3); ln(g,a1,b1,C.ph,3);
+  const inR=t=>rng&&t>=rng[0]-1e-9&&t<=rng[1]+1e-9;
+  if(ar.H&&inR(ar.H.t)){ const h1=EP(ar.H.x,-ar.H.y),h2=EP(ar.H.x,0); ln(g,h1,h2,C.ink,1,[3,3],.7); dot(g,h2,3.4,C.sheet,C.pv,1.6); txt(g,"H''",h2.x+7,h2.y-7,C.pv,{size:11}); dot(g,h1,5,C.sheet,C.ph,2.2); txt(g,"H'≡H",h1.x+8,h1.y+15,C.ph,{size:12,bold:true}); }
+  if(ar.V&&inR(ar.V.t)){ const v2=EP(ar.V.x,ar.V.z),v1=EP(ar.V.x,0); ln(g,v1,v2,C.ink,1,[3,3],.7); dot(g,v1,3.4,C.sheet,C.ph,1.6); txt(g,"V'",v1.x+7,v1.y+14,C.ph,{size:11}); dot(g,v2,5,C.sheet,C.pv,2.2); txt(g,"V''≡V",v2.x+8,v2.y-8,C.pv,{size:12,bold:true}); }
+  if(o.handles){ [a1,b1,a2,b2].forEach(q=>dot(g,q,11,withA(C.ink,.07),withA(C.ink,.35),1)); }
+  dot(g,a2,4.6,C.pv,C.sheet,1.4); dot(g,b2,4.6,C.pv,C.sheet,1.4); dot(g,a1,4.6,C.ph,C.sheet,1.4); dot(g,b1,4.6,C.ph,C.sheet,1.4);
+  pairLabel(g,a2,b2,"A''","B''",C.pv,8,-8); pairLabel(g,a1,b1,"A'","B'",C.ph,8,16);
+  if(Math.hypot(a2.x-b2.x,a2.y-b2.y)>14){ const m=mid(a2,b2); txt(g,"r''",m.x-26,m.y-8,C.pv,{size:12,bold:true}); }
+  if(Math.hypot(a1.x-b1.x,a1.y-b1.y)>14){ const m=mid(a1,b1); txt(g,"r'",m.x-22,m.y+16,C.ph,{size:12,bold:true}); }
+  if(o.handles){ handles.push({id:'A1',x:a1.x,y:a1.y},{id:'A2',x:a2.x,y:a2.y},{id:'B1',x:b1.x,y:b1.y},{id:'B2',x:b2.x,y:b2.y}); }
+}
+function traceE(a,b,c,solidSign,col,label){
+  const g=ctxE, seg=clipLine(a,b,c,WE/2/scE,HE/2/scE); if(!seg) return;
+  const [p,q]=seg; const parts=[];
+  if(p.v*q.v<-1e-9){ const t=p.v/(p.v-q.v); const m={u:p.u+t*(q.u-p.u),v:0}; parts.push([p,m],[m,q]); } else parts.push([p,q]);
+  const items=parts.map(([s,e])=>{ const m=(s.v+e.v)/2; return {s,e,solid:Math.abs(m)<1e-9||Math.sign(m)===solidSign}; });
+  const pt=u=>EP(u.u,u.v);
+  items.filter(i=>!i.solid).forEach(i=>ln(g,pt(i.s),pt(i.e),col,1.7,[7,5],.9));
+  items.filter(i=>i.solid).forEach(i=>ln(g,pt(i.s),pt(i.e),col,3.4));
+  const sol=items.find(i=>i.solid)||items[0];
+  const ends=[sol.s,sol.e].sort((u,v)=>Math.abs(v.v)-Math.abs(u.v));
+  let L=pt(ends[0]); const O=pt(ends[1]); const len=Math.hypot(L.x-O.x,L.y-O.y)||1;
+  const f=Math.min(34,len*.4)/len; L={x:L.x+(O.x-L.x)*f,y:L.y+(O.y-L.y)*f};
+  txt(g,label,clamp(L.x+8,10,WE-30),clamp(L.y+(solidSign<0?-8:16),14,HE-8),col,{size:13,bold:true});
+}
+function ep_plano(def){
+  const g=ctxE, ci=classPlane(def);
+  if(ci.contem){ ln(g,{x:0,y:ey(0)},{x:WE,y:ey(0)},C.obj,5); txt(g,'αh ≡ αv ≡ LT',10,ey(0)-12,C.obj,{size:12,bold:true}); return; }
+  const [nx,ny,nz]=def.n,d=def.d;
+  if(nx!==0||ny!==0) traceE(nx,-ny,d,-1,C.ph,'αh');
+  if(nx!==0||nz!==0) traceE(nx,nz,d,1,C.pv,'αv');
+}
+function epObj(){
+  if(st.mod==='ponto') return {kind:'ponto',p:st.ponto};
+  if(st.mod==='reta') return {kind:'reta',A:st.reta.A,B:st.reta.B};
+  if(st.mod==='plano') return {kind:'plano',def:planeFromParams(st.plano)};
+  if(pr.q.kind==='marcar') return null;
+  return pr.q.obj;
+}
+function drawE(){
+  const [w,h]=fit(cvE,ctxE); WE=w;HE=h; scE=Math.min(w,h)/15.6; handles=[];
+  epBase();
+  const o=epObj(); const drag=st.mod==='ponto'||st.mod==='reta';
+  if(o){ if(o.kind==='ponto') ep_pt(o.p,'A',{dims:st.mod==='ponto',handles:drag}); else if(o.kind==='reta') ep_reta(o.A,o.B,{handles:drag}); else ep_plano(o.def); }
+  if(st.mod==='prat'&&pr.q.kind==='marcar'){
+    const p=pr.q.obj.p, g=ctxE;
+    pr.guesses.forEach((q,i)=>{ const c=i===0?C.ph:C.pv; const s=EP(q.x,q.e);
+      if(!pr.answered){ dot(g,s,5,c,C.sheet,1.5); txt(g,i===0?"A'?":"A''?",s.x+9,s.y+(i===0?16:-9),c,{size:12}); }
+      else{ const ok=i===0?(q.x===p.x&&q.e===-p.y):(q.x===p.x&&q.e===p.z); dot(g,s,7,null,ok?C.ok:C.bad,2.2); if(!ok){ ln(g,{x:s.x-5,y:s.y-5},{x:s.x+5,y:s.y+5},C.bad,2); ln(g,{x:s.x-5,y:s.y+5},{x:s.x+5,y:s.y-5},C.bad,2);} }
+    });
+    if(pr.answered) ep_pt(p,'A',{});
+  }
+}
+
+/* ================= laço de desenho ================= */
+let dirty=true,running=false,anim=null;
+const VIEWS={persp:[.62,.42],front:[0,0],top:[0,1.5],side:[1.5708,0]};
+function requestDraw(){ dirty=true; loop(); }
+function loop(){ if(running)return; running=true; requestAnimationFrame(frame); }
+function frame(now){
+  running=false; let more=false;
+  if(anim){
+    const p=clamp((now-anim.t0)/anim.dur,0,1), e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    st.theta=anim.from+(anim.to-anim.from)*e; more=true; dirty=true; syncOut();
+    if(p>=1){ anim=null; syncOut(); }
+  }
+  if(cam.ty!==null){
+    let dy=cam.ty-cam.yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); const dp=cam.tp-cam.pitch;
+    cam.yaw+=dy*.2; cam.pitch+=dp*.2; dirty=true; more=true;
+    if(Math.abs(dy)<.004&&Math.abs(dp)<.004){ cam.yaw=cam.ty; cam.pitch=cam.tp; cam.ty=null; }
+  }
+  if(dirty){ dirty=false; readColors(); draw3(); drawE(); }
+  if(more) loop();
+}
+function animTheta(to){ anim={from:st.theta,to,t0:performance.now(),dur:Math.max(300,2300*Math.abs(to-st.theta)/90)}; loop(); }
+function syncOut(){
+  $$('[data-k]').forEach(el=>{ const v=getp(el.dataset.k); if(document.activeElement!==el||el.dataset.k==='theta') el.value=v; const o=$('#o-'+el.dataset.k.replace(/\./g,'-')); if(o) o.textContent=fv(v)+(el.dataset.u||''); });
+  const b=$('[data-act="reb"]'); if(b&&st.mod!=='prat') b.textContent=st.theta>=89.5||(anim&&anim.to===90)?'Desfazer rebatimento':'Rebater PH';
+}
+
+/* ================= controles ================= */
+function slider(k,label,min,max,step,cls,unit){
+  const v=getp(k), id=k.replace(/\./g,'-');
+  return `<label class="sl ${cls}" for="s-${id}"><span class="sl-l">${label}</span><input type="range" id="s-${id}" data-k="${k}" data-u="${unit||''}" min="${min}" max="${max}" step="${step}" value="${v}"><output id="o-${id}">${fv(v)}${unit||''}</output></label>`;
+}
+function chips(items,act,cur){ return `<div class="chips">${items.map(([v,l])=>`<button class="chip" data-act="${act}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`; }
+function rebSec(){
+  return `<h2 class="sec">Rebatimento do PH sobre o PV</h2>${slider('theta','ângulo',0,90,1,'k-obj','°')}
+  <div class="btnrow"><button class="btn" data-act="reb">Rebater PH</button></div>`;
+}
+const PRE_PONTO=[['1','1º diedro',[2,3,4]],['2','2º diedro',[2,-3,4]],['3','3º diedro',[2,-3,-4]],['4','4º diedro',[2,3,-4]],['ph','No PH',[2,3,0]],['pv','No PV',[2,0,4]],['lt','Na LT',[2,0,0]],['b1','β₁ (ímpares)',[2,3,3]],['b2','β₂ (pares)',[2,3,-3]]];
+const PRE_RETA=[['q','Qualquer',[-3,1,5,3,5,1]],['h','Horizontal',[-3,1,3,3,5,3]],['f','Frontal',[-3,3,1,3,3,5]],['fh','Fronto-horizontal',[-3,2,4,3,2,4]],['v','Vertical',[2,3,1,2,3,5]],['t','De topo',[2,1,3,2,5,3]],['p','De perfil',[2,1,5,2,5,1]]];
+function ctlPonto(){
+  return `<h2 class="sec">Coordenadas do ponto A</h2>
+  ${slider('ponto.x','x · abscissa',-6,6,.5,'k-ink')}${slider('ponto.y','y · afastamento',-6,6,.5,'k-ph')}${slider('ponto.z','z · cota',-6,6,.5,'k-pv')}
+  <h2 class="sec">Posições notáveis</h2>
+  <div class="chips">${PRE_PONTO.map(([v,l])=>`<button class="chip" data-act="pre" data-v="${v}">${l}</button>`).join('')}</div>
+  ${rebSec()}`;
+}
+function ctlReta(){
+  return `<h2 class="sec">Ponto A</h2>
+  ${slider('reta.A.x','x',-6,6,.5,'k-ink')}${slider('reta.A.y','y · afast.',-6,6,.5,'k-ph')}${slider('reta.A.z','z · cota',-6,6,.5,'k-pv')}
+  <h2 class="sec">Ponto B</h2>
+  ${slider('reta.B.x','x',-6,6,.5,'k-ink')}${slider('reta.B.y','y · afast.',-6,6,.5,'k-ph')}${slider('reta.B.z','z · cota',-6,6,.5,'k-pv')}
+  <h2 class="sec">Retas notáveis</h2>
+  <div class="chips">${PRE_RETA.map(([v,l])=>`<button class="chip" data-act="pre" data-v="${v}">${l}</button>`).join('')}</div>
+  ${rebSec()}`;
+}
+function ctlPlano(){
+  const pl=st.plano;
+  const tipos=[['obl','Traços concorrentes'],['par','Paralelo à LT'],['lt','Contém a LT'],['hor','Horizontal'],['fro','Frontal'],['per','De perfil']];
+  let h=`<h2 class="sec">Como o plano é dado</h2>${chips(tipos,'ptipo',pl.tipo)}<h2 class="sec">Parâmetros</h2>`;
+  if(pl.tipo==='obl') h+=slider('plano.x0','x₀ · concorrência',-5,5,.5,'k-ink')+slider('plano.ah','αh com a LT',10,170,1,'k-ph','°')+slider('plano.av','αv com a LT',10,170,1,'k-pv','°')+
+    `<div class="chips" style="margin-top:8px"><button class="chip" data-act="pobl" data-v="60,50">Oblíquo</button><button class="chip" data-act="pobl" data-v="90,50">αh ⟂ LT (topo)</button><button class="chip" data-act="pobl" data-v="60,90">αv ⟂ LT (vertical)</button><button class="chip" data-act="pobl" data-v="90,90">Ambos ⟂ LT (perfil)</button></div>`;
+  else if(pl.tipo==='par') h+=slider('plano.y0','αh · afastamento',-6,6,.5,'k-ph')+slider('plano.z0','αv · cota',-6,6,.5,'k-pv');
+  else if(pl.tipo==='lt') h+=slider('plano.t','inclinação',5,175,1,'k-obj','°')+`<div class="chips" style="margin-top:8px"><button class="chip" data-act="plt" data-v="45">β₁ (45°)</button><button class="chip" data-act="plt" data-v="135">β₂ (135°)</button></div>`;
+  else if(pl.tipo==='hor') h+=slider('plano.k','z · cota',-6,6,.5,'k-pv');
+  else if(pl.tipo==='fro') h+=slider('plano.k','y · afastamento',-6,6,.5,'k-ph');
+  else h+=slider('plano.k','x · abscissa',-6,6,.5,'k-ink');
+  return h+rebSec();
+}
+function ctlPrat(){
+  const q=pr.q;
+  let h=`<h2 class="sec">Tipo de exercício</h2>${chips([['todos','Todos'],['ponto','Diedros'],['reta','Retas'],['plano','Planos'],['marcar','Marcar']],'qkind',pr.kind)}
+  <div class="qhead"><span>Questão ${pr.n}</span><span class="score">Acertos ${pr.ok}/${pr.total}</span></div><p class="qtext">${q.text}</p>`;
+  if(q.kind==='marcar'){
+    const s=pr.guesses.length;
+    h+=`<ol class="steps"><li class="${s>0?'done':'now'}">Clique onde fica A′ (projeção horizontal)</li><li class="${s>1?'done':s===1?'now':''}">Clique onde fica A″ (projeção vertical)</li></ol>`;
+    if(!pr.answered) h+=`<button class="btn ghost" data-act="redo" ${s?'':'disabled'}>Refazer marcação</button>`;
+  }else{
+    h+=`<div class="opts">${q.opts.map(([id,l])=>{const stt=!pr.answered?'':id===q.answer?'ok':id===pr.choice?'bad':''; return `<button class="opt" data-act="opt" data-v="${id}" data-state="${stt}" ${pr.answered?'disabled':''}>${l}</button>`;}).join('')}</div>`;
+  }
+  if(pr.answered) h+=`<div class="btnrow"><button class="btn" data-act="next">Próxima questão</button><button class="btn ghost" data-act="reb">Rebater PH</button></div>`;
+  return h;
+}
+function renderCtl(){
+  const el=$('#ctl');
+  el.innerHTML=st.mod==='ponto'?ctlPonto():st.mod==='reta'?ctlReta():st.mod==='plano'?ctlPlano():ctlPrat();
+  cvE.style.touchAction=(st.mod==='ponto'||st.mod==='reta')?'none':'manipulation';
+  syncOut();
+}
+
+/* ================= leitura ================= */
+const RETA_INFO={
+  horizontal:{nome:'Reta horizontal',def:'Paralela ao PH e oblíqua ao PV: todos os pontos têm a mesma cota.',ep:"r'' é paralela à LT; r' é oblíqua e mostra a verdadeira grandeza de AB."},
+  frontal:{nome:'Reta frontal',def:'Paralela ao PV e oblíqua ao PH: todos os pontos têm o mesmo afastamento.',ep:"r' é paralela à LT; r'' é oblíqua e mostra a verdadeira grandeza de AB."},
+  fronto:{nome:'Reta fronto-horizontal',def:'Paralela ao PH e ao PV, isto é, paralela à LT: cota e afastamento constantes.',ep:"r' e r'' são paralelas à LT, ambas em verdadeira grandeza."},
+  vertical:{nome:'Reta vertical',def:'Perpendicular ao PH e paralela ao PV: mesma abscissa e mesmo afastamento.',ep:"r' reduz-se a um ponto; r'' é perpendicular à LT, em verdadeira grandeza."},
+  topo:{nome:'Reta de topo',def:'Perpendicular ao PV e paralela ao PH: mesma abscissa e mesma cota.',ep:"r'' reduz-se a um ponto; r' é perpendicular à LT, em verdadeira grandeza."},
+  perfil:{nome:'Reta de perfil',def:'Contida em plano de perfil, oblíqua ao PH e ao PV: mesma abscissa.',ep:"r' e r'' são perpendiculares à LT e ficam na mesma linha de chamada."},
+  qualquer:{nome:'Reta qualquer',def:'Oblíqua ao PH e ao PV, sem estar num plano de perfil.',ep:"r' e r'' são oblíquas à LT."},
+  ponto:{nome:'A e B coincidem',def:'Dois pontos iguais não definem uma reta. Afaste B de A.',ep:''}
+};
+const side=(v,neg,pos,nul)=>v>0?pos:v<0?neg:nul;
+function primer(items){ return `<details class="primer"><summary>Conceitos desta seção</summary><ul>${items.map(i=>`<li>${i}</li>`).join('')}</ul></details>`; }
+function infoPonto(){
+  const p=st.ponto, ps=posPonto(p), bis=bisPonto(p);
+  return `<h2 class="sec">Leitura</h2><p class="big">A(${fv(p.x)}; ${fv(p.y)}; ${fv(p.z)})</p><span class="tag">${ps.nome}</span>
+  <dl class="kv"><dt>Afastamento</dt><dd><span class="mono">y = ${fv(p.y)}</span> · ${side(p.y,'atrás do PV','à frente do PV','sobre o PV')}</dd>
+  <dt>Cota</dt><dd><span class="mono">z = ${fv(p.z)}</span> · ${side(p.z,'abaixo do PH','acima do PH','sobre o PH')}</dd>
+  <dt>Na épura</dt><dd>A\u2033 ${p.z===0?'sobre a LT':fv(Math.abs(p.z))+(p.z>0?' acima':' abaixo')+' da LT'}<br>A\u2032 ${p.y===0?'sobre a LT':fv(Math.abs(p.y))+(p.y>0?' abaixo':' acima')+' da LT'}</dd></dl>
+  <p>${ps.expl}</p>${bis?`<p>${bis}</p>`:''}
+  ${primer(['PH e PV são planos perpendiculares; a interseção deles é a linha de terra (LT). Os dois dividem o espaço em quatro diedros.','1º diedro: acima do PH e à frente do PV. 2º: acima do PH e atrás do PV. 3º: abaixo do PH e atrás do PV. 4º: abaixo do PH e à frente do PV.','A′ é a projeção ortogonal de A sobre o PH (projeção horizontal). A″ é a projeção ortogonal de A sobre o PV (projeção vertical).','Rebatimento: o PH gira em torno da LT até coincidir com o PV. O semiplano horizontal anterior desce sobre o semiplano vertical inferior. A′ e A″ passam a ficar no mesmo plano, a épura, sobre uma perpendicular à LT chamada linha de chamada.'])}`;
+}
+function infoReta(){
+  const A=st.reta.A,B=st.reta.B, ar=analisaReta(A,B), ri2=RETA_INFO[ar.id];
+  let h=`<h2 class="sec">Leitura</h2><p class="big" style="font-size:18px">A(${fv(A.x)}; ${fv(A.y)}; ${fv(A.z)})<br>B(${fv(B.x)}; ${fv(B.y)}; ${fv(B.z)})</p><span class="tag">${ri2.nome}</span><p>${ri2.def}</p>`;
+  if(ar.id==='ponto') return h;
+  h+=`<p>${ri2.ep}</p><dl class="kv"><dt>Variação</dt><dd class="m">Δx ${fv(ar.d[0])} · Δy ${fv(ar.d[1])} · Δz ${fv(ar.d[2])}</dd>
+  <dt>|AB|</dt><dd class="m">${fv(ar.L)} (verdadeira grandeza)</dd>
+  <dt>Com o PH</dt><dd class="m">${fv(ar.angH)}°</dd><dt>Com o PV</dt><dd class="m">${fv(ar.angV)}°</dd>`;
+  h+=`<dt>Traço H</dt><dd class="m">${ar.noPH?'a reta está contida no PH':ar.H?`(${fv(ar.H.x)}; ${fv(ar.H.y)}; 0)`:'não tem (paralela ao PH)'}</dd>`;
+  h+=`<dt>Traço V</dt><dd class="m">${ar.noPV?'a reta está contida no PV':ar.V?`(${fv(ar.V.x)}; 0; ${fv(ar.V.z)})`:'não tem (paralela ao PV)'}</dd></dl>`;
+  const out=(ar.H&&Math.max(Math.abs(ar.H.x),Math.abs(ar.H.y))>R)||(ar.V&&Math.max(Math.abs(ar.V.x),Math.abs(ar.V.z))>R);
+  if(out) h+=`<p class="note">Um dos traços fica fora do quadro desenhado.</p>`;
+  return h+primer(['Uma reta fica definida por dois pontos. Suas projeções r′ e r″ são as retas que unem A′ a B′ e A″ a B″.','Traço horizontal H: ponto onde a reta fura o PH (cota nula). Traço vertical V: ponto onde fura o PV (afastamento nulo).','Quando a reta é paralela a um plano de projeção, o segmento se projeta nesse plano em verdadeira grandeza.','Na épura, H′ ≡ H fica sobre r′ e H″ fica na LT. V″ ≡ V fica sobre r″ e V′ fica na LT.']);
+}
+function infoPlano(){
+  const def=planeFromParams(st.plano), ci=classPlane(def);
+  return `<h2 class="sec">Leitura</h2><span class="tag">${ci.nome}</span><p>${ci.def}</p><p>${ci.tr}</p>${ci.nota?`<p class="note">${ci.nota}</p>`:''}
+  <dl class="kv"><dt>Com o PH</dt><dd class="m">${fv(ci.angH)}°</dd><dt>Com o PV</dt><dd class="m">${fv(ci.angV)}°</dd></dl>
+  ${primer(['Um plano α é representado pelos seus traços: αh (interseção com o PH) e αv (interseção com o PV). Se não são paralelos à LT, os dois traços concorrem num ponto da LT.','Na épura, o αh aparece contínuo abaixo da LT e o αv contínuo acima dela, a parte que fica no 1º diedro. O restante é tracejado.','Planos projetantes são perpendiculares a um plano de projeção: o plano vertical (projetante horizontal) e o plano de topo (projetante vertical).','Os planos bissetores β₁ (diedros ímpares) e β₂ (diedros pares) contêm a LT e dividem ao meio os ângulos entre PH e PV.'])}`;
+}
+function infoPrat(){
+  const q=pr.q;
+  if(!pr.answered){
+    const dicas={ponto:'Compare a posição de A′ e A″ em relação à LT: A″ acima da LT indica cota positiva; A′ abaixo da LT indica afastamento positivo.',
+      reta:'Veja se r′ e r″ são paralelas à LT, perpendiculares a ela ou se alguma se reduz a um ponto.',
+      plano:'Observe como os traços αh e αv se posicionam em relação à LT: paralelos, perpendiculares, oblíquos ou ausentes.',
+      marcar:'A″ fica na linha de chamada de A, a uma distância da LT igual à cota. A′ fica na mesma linha de chamada, a uma distância igual ao afastamento, do lado oposto quando os dois são positivos.'};
+    return `<h2 class="sec">Dica</h2><p>${dicas[q.kind]}</p>${primer(['As questões são geradas ao acaso. Depois de responder, o espaço mostra a figura e você pode rebater o PH para conferir a épura.','Para marcar projeções, o clique é ajustado ao ponto inteiro mais próximo da grade.'])}`;
+  }
+  return `<h2 class="sec">Correção</h2><p class="verdict ${pr.lastOk?'ok':'bad'}">${pr.lastOk?'Correto':'Ainda não'}</p>${q.explain()}`;
+}
+function renderInfo(){
+  const f=st.mod==='ponto'?infoPonto:st.mod==='reta'?infoReta:st.mod==='plano'?infoPlano:infoPrat;
+  const el=$('#info'); const open=$('.primer',el)&&$('.primer',el).open; el.innerHTML=f(); const nu=$('.primer',el); if(nu&&open) nu.open=true;
+}
+function updateAria(){
+  let s;
+  if(st.mod==='ponto') s=`Ponto A(${fv(st.ponto.x)}; ${fv(st.ponto.y)}; ${fv(st.ponto.z)}), ${posPonto(st.ponto).nome}`;
+  else if(st.mod==='reta') s=`Reta AB: ${RETA_INFO[analisaReta(st.reta.A,st.reta.B).id].nome}`;
+  else if(st.mod==='plano') s=`Plano: ${classPlane(planeFromParams(st.plano)).nome}`;
+  else s='Exercício de prática';
+  cv3.setAttribute('aria-label','Perspectiva. '+s); cvE.setAttribute('aria-label','Épura. '+s);
+  const hints={ponto:'Arraste A′ e A″ na épura ou gire o espaço com o dedo ou o mouse.',reta:'Arraste os pontos na épura ou gire o espaço com o dedo ou o mouse.',plano:'Gire o espaço com o dedo ou o mouse. Duplo toque restaura a vista.',prat:'Gire o espaço com o dedo ou o mouse.'};
+  $('#hint').textContent=hints[st.mod];
+}
+function render(){ renderCtl(); renderInfo(); updateAria(); requestDraw(); }
+function changed(){ renderInfo(); updateAria(); syncOut(); requestDraw(); }
+
+/* ================= prática ================= */
+const nz=(a,b)=>{let v;do{v=ri(a,b);}while(v===0);return v;};
+const sgn=()=>pick([-1,1]);
+const farFrom=v=>{let u;do{u=ri(-5,5);}while(Math.abs(u-v)<2);return u;};
+const OPT_PONTO=[['1','1º diedro'],['2','2º diedro'],['3','3º diedro'],['4','4º diedro'],['PH','No PH'],['PV','No PV']];
+const OPT_RETA=[['horizontal','Horizontal'],['frontal','Frontal'],['fronto','Fronto-horizontal'],['vertical','Vertical'],['topo','De topo'],['perfil','De perfil'],['qualquer','Qualquer']];
+const OPT_PLANO=[['horizontal','Horizontal'],['frontal','Frontal'],['perfil','De perfil'],['vertical','Vertical'],['topo','De topo'],['paralelo','Paralelo à LT'],['qualquer','Oblíquo']];
+const gen={
+  ponto(){
+    const id=pick(['1','2','3','4','1','2','3','4','PH','PV']); let y,z; const a=()=>nz(1,5);
+    if(id==='1'){y=a();z=a();} else if(id==='2'){y=-a();z=a();} else if(id==='3'){y=-a();z=-a();} else if(id==='4'){y=a();z=-a();}
+    else if(id==='PH'){y=nz(-5,5);z=0;} else {y=0;z=nz(-5,5);}
+    const p={x:ri(-4,4),y,z}; const ps=posPonto(p);
+    return {kind:'ponto',obj:{kind:'ponto',p},answer:id,opts:OPT_PONTO,text:'Observe a épura do ponto A. Onde ele está?',
+      explain:()=>`<p>A(${fv(p.x)}; ${fv(p.y)}; ${fv(p.z)}): ${ps.nome}.</p><p>${ps.expl}</p>`};
+  },
+  reta(){
+    const cls=pick(['horizontal','frontal','fronto','vertical','topo','perfil','qualquer','qualquer']);
+    const x1=ri(-5,5),y1=ri(-5,5),z1=ri(-5,5); let B;
+    switch(cls){
+      case 'horizontal':B={x:farFrom(x1),y:farFrom(y1),z:z1};break;
+      case 'frontal':B={x:farFrom(x1),y:y1,z:farFrom(z1)};break;
+      case 'fronto':B={x:farFrom(x1),y:y1,z:z1};break;
+      case 'vertical':B={x:x1,y:y1,z:farFrom(z1)};break;
+      case 'topo':B={x:x1,y:farFrom(y1),z:z1};break;
+      case 'perfil':B={x:x1,y:farFrom(y1),z:farFrom(z1)};break;
+      default:B={x:farFrom(x1),y:farFrom(y1),z:farFrom(z1)};
+    }
+    const A={x:x1,y:y1,z:z1}; const ar=analisaReta(A,B), info=RETA_INFO[ar.id];
+    return {kind:'reta',obj:{kind:'reta',A,B},answer:ar.id,opts:OPT_RETA,text:'Observe as projeções r′ e r″ da reta AB. Como ela é classificada?',
+      explain:()=>`<p><b>${info.nome}.</b> ${info.def}</p><p>Na épura: ${info.ep}</p>`};
+  },
+  plano(){
+    const cls=pick(['horizontal','frontal','perfil','vertical','topo','paralelo','qualquer']);
+    const angs=[30,40,50,60,120,130,140,150], x0=ri(-3,3), s=()=>sgn()*ri(2,5);
+    let pl;
+    switch(cls){
+      case 'horizontal':pl={tipo:'hor',k:s()};break;
+      case 'frontal':pl={tipo:'fro',k:s()};break;
+      case 'perfil':pl={tipo:'per',k:ri(-4,4)};break;
+      case 'vertical':pl={tipo:'obl',x0,ah:pick(angs),av:90};break;
+      case 'topo':pl={tipo:'obl',x0,ah:90,av:pick(angs)};break;
+      case 'paralelo':pl={tipo:'par',y0:s(),z0:s()};break;
+      default:pl={tipo:'obl',x0,ah:pick(angs),av:pick(angs)};
+    }
+    const def=planeFromParams(pl), ci=classPlane(def);
+    return {kind:'plano',obj:{kind:'plano',def},answer:ci.id,opts:OPT_PLANO,text:'Observe os traços do plano α. Como ele é classificado?',
+      explain:()=>`<p><b>${ci.nome}.</b> ${ci.def}</p><p>${ci.tr}</p>`};
+  },
+  marcar(){
+    const p={x:ri(-5,5),y:nz(-5,5),z:nz(-5,5)}, ps=posPonto(p);
+    return {kind:'marcar',obj:{kind:'ponto',p},text:`Marque na épura as projeções do ponto A(${fv(p.x)}; ${fv(p.y)}; ${fv(p.z)}).`,
+      explain:()=>`<p>A′ fica em ${fv(Math.abs(p.y))} ${p.y>0?'abaixo':'acima'} da LT (afastamento ${fv(p.y)}) e A″ em ${fv(Math.abs(p.z))} ${p.z>0?'acima':'abaixo'} da LT (cota ${fv(p.z)}), na mesma linha de chamada, sobre a abscissa ${fv(p.x)}.</p><p>${ps.nome}.</p>`};
+  }
+};
+function newQ(){
+  const k=pr.kind==='todos'?pick(['ponto','reta','plano','marcar']):pr.kind;
+  pr.q=gen[k](); pr.answered=false; pr.choice=null; pr.guesses=[]; pr.n++; st.theta=0; anim=null; render();
+}
+function answer(ok,choice){
+  pr.answered=true; pr.choice=choice; pr.lastOk=ok; pr.total++; if(ok) pr.ok++;
+  render(); animTheta(90);
+}
+
+/* ================= eventos ================= */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||b.disabled) return;
+  const act=b.dataset.act, v=b.dataset.v;
+  if(act==='view'){ const t=VIEWS[v]; cam.ty=t[0]; cam.tp=t[1]; requestDraw(); }
+  else if(act==='reb'){ animTheta(st.theta>=89.5||(anim&&anim.to===90)?0:90); }
+  else if(act==='pre'){
+    if(st.mod==='ponto'){ const a=PRE_PONTO.find(r=>r[0]===v)[2]; st.ponto={x:a[0],y:a[1],z:a[2]}; }
+    else { const a=PRE_RETA.find(r=>r[0]===v)[2]; st.reta={A:{x:a[0],y:a[1],z:a[2]},B:{x:a[3],y:a[4],z:a[5]}}; }
+    changed();
+  }
+  else if(act==='ptipo'){ st.plano.tipo=v; render(); }
+  else if(act==='pobl'){ const [a,c]=v.split(',').map(Number); st.plano.ah=a; st.plano.av=c; changed(); }
+  else if(act==='plt'){ st.plano.t=Number(v); changed(); }
+  else if(act==='qkind'){ pr.kind=v; newQ(); }
+  else if(act==='opt'){ answer(v===pr.q.answer,v); }
+  else if(act==='next'){ newQ(); }
+  else if(act==='redo'){ pr.guesses=[]; render(); }
+});
+$('#ctl').addEventListener('input',e=>{
+  const el=e.target; if(!el.dataset||!el.dataset.k) return;
+  const v=parseFloat(el.value);
+  if(el.dataset.k==='theta'){ anim=null; st.theta=v; syncOut(); requestDraw(); return; }
+  setp(el.dataset.k,v);
+  if(st.mod==='plano'&&(el.dataset.k==='plano.y0'||el.dataset.k==='plano.z0')&&Math.abs(v)<.5){ /* evita plano indefinido */ }
+  changed();
+});
+$$('.tabs [role=tab]').forEach(b=>b.addEventListener('click',()=>{
+  st.mod=b.dataset.mod; $$('.tabs [role=tab]').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
+  anim=null; if(st.mod==='prat'){ if(!pr.q) newQ(); else { st.theta=pr.answered?st.theta:0; render(); } } else render();
+}));
+
+/* órbita 3D */
+let drag3=null;
+cv3.addEventListener('pointerdown',e=>{ cv3.setPointerCapture(e.pointerId); drag3={x:e.clientX,y:e.clientY}; cam.ty=null; cv3.style.cursor='grabbing'; });
+cv3.addEventListener('pointermove',e=>{ if(!drag3) return; const dx=e.clientX-drag3.x,dy=e.clientY-drag3.y; drag3.x=e.clientX; drag3.y=e.clientY; cam.yaw+=dx*.009; cam.pitch=clamp(cam.pitch+dy*.009,-1.5,1.5); requestDraw(); });
+const endDrag3=()=>{ drag3=null; cv3.style.cursor='grab'; };
+cv3.addEventListener('pointerup',endDrag3); cv3.addEventListener('pointercancel',endDrag3);
+cv3.addEventListener('dblclick',()=>{ cam.ty=VIEWS.persp[0]; cam.tp=VIEWS.persp[1]; requestDraw(); });
+cv3.addEventListener('keydown',e=>{
+  const k={ArrowLeft:[-.1,0],ArrowRight:[.1,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]}[e.key]; if(!k) return;
+  e.preventDefault(); cam.ty=null; cam.yaw+=k[0]; cam.pitch=clamp(cam.pitch+k[1],-1.5,1.5); requestDraw();
+});
+
+/* épura: arrastar projeções e marcar pontos */
+let dragE=null;
+function epPos(e){ const r=cvE.getBoundingClientRect(); return {px:e.clientX-r.left,py:e.clientY-r.top,x:(e.clientX-r.left-WE/2)/scE,e:(HE/2-(e.clientY-r.top))/scE}; }
+function hit(pos){ let best=null,bd=20; handles.forEach(h=>{const d=Math.hypot(h.x-pos.px,h.y-pos.py); if(d<bd){bd=d;best=h;}}); return best; }
+cvE.addEventListener('pointerdown',e=>{
+  const pos=epPos(e);
+  if(st.mod==='prat'&&pr.q&&pr.q.kind==='marcar'&&!pr.answered){
+    if(pr.guesses.length>=2) return;
+    pr.guesses.push({x:clamp(Math.round(pos.x),-7,7),e:clamp(Math.round(pos.e),-7,7)});
+    if(pr.guesses.length===2){
+      const p=pr.q.obj.p, g=pr.guesses; const ok=g[0].x===p.x&&g[0].e===-p.y&&g[1].x===p.x&&g[1].e===p.z;
+      answer(ok,null);
+    } else render();
+    return;
+  }
+  const h=hit(pos); if(!h) return; dragE=h.id; cvE.setPointerCapture(e.pointerId); cvE.style.cursor='grabbing';
+});
+cvE.addEventListener('pointermove',e=>{
+  const pos=epPos(e);
+  if(!dragE){ cvE.style.cursor=(st.mod==='prat'&&pr.q&&pr.q.kind==='marcar'&&!pr.answered)?'crosshair':hit(pos)?'grab':'default'; return; }
+  const x=clamp(snap(pos.x,.5),-6,6), ee=clamp(snap(pos.e,.5),-6,6);
+  if(st.mod==='ponto'){
+    if(dragE==='p2'){ st.ponto.x=x; st.ponto.z=ee; } else { st.ponto.x=x; st.ponto.y=-ee; }
+  }else if(st.mod==='reta'){
+    const P=dragE[0]==='A'?st.reta.A:st.reta.B; P.x=x; if(dragE[1]==='2') P.z=ee; else P.y=-ee;
+  }
+  st.ponto.y=zero(st.ponto.y); changed();
+});
+const endDragE=()=>{ dragE=null; cvE.style.cursor='default'; };
+cvE.addEventListener('pointerup',endDragE); cvE.addEventListener('pointercancel',endDragE);
+
+/* tema e tamanho */
+if(window.ResizeObserver){ const ro=new ResizeObserver(requestDraw); ro.observe(cv3); ro.observe(cvE); } else window.addEventListener('resize',requestDraw);
+try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',requestDraw); }catch(_){}
+new MutationObserver(requestDraw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(requestDraw);
+
+render();
+})();
+</script>
