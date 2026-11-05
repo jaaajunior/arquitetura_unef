@@ -1,4 +1,4 @@
-<title>Laboratório de Monge</title>
+<title>Laboratório de Monge - UNEF</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
@@ -182,7 +182,13 @@ input[type=range]{width:100%;margin:0;height:30px;accent-color:var(--ink)}
 'use strict';
 
 /* ================= utilidades ================= */
-const R=7, DIST=34, EPS=1e-9;
+let R=7; const DIST=34, EPS=1e-9;
+/* quadro adaptável: 7 (padrão) ou 12 quando algum valor passa de 6 em módulo (limite dos controles: ±10) */
+function updR(){ let m=0; const t=(...a)=>a.forEach(v=>{ if(isFinite(v)) m=Math.max(m,Math.abs(v)); });
+  const p=st.ponto,A=st.reta.A,B=st.reta.B,q=st.plano; if(st.mod==="ponto") t(p.x,p.y,p.z); else if(st.mod==="reta") t(A.x,A.y,A.z,B.x,B.y,B.z);
+  else if(st.mod==="plano"){ t(q.tipo==="obl"?q.x0:0); if(q.tipo==="par") t(q.y0,q.z0); if(["hor","fro","per"].includes(q.tipo)) t(q.k); }
+  if(st.mod==="prat"&&pr&&pr.q&&pr.q.obj){ const o=pr.q.obj; if(o.p) t(o.p.x,o.p.y,o.p.z); if(o.A) t(o.A.x,o.A.y,o.A.z); if(o.B) t(o.B.x,o.B.y,o.B.z); }
+  R=m>6?12:7; }
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -395,18 +401,18 @@ function P3(x,y,z){ // x abscissa, y afastamento (para o observador), z cota (pa
 const PH3=(x,y,th)=>P3(x,y*Math.cos(th),-y*Math.sin(th));
 
 function planes3(th){
-  const g=ctx3;
+  const g=ctx3, G=R>7?10:6;
   const pvC=[[-R,-R],[R,-R],[R,R],[-R,R]].map(([x,z])=>P3(x,0,z));
   poly(g,pvC,withA(C.pv,.08),withA(C.pv,.85),1.5);
-  for(let i=-6;i<=6;i+=2){ ln(g,P3(i,0,-R),P3(i,0,R),withA(C.pv,.18),1); ln(g,P3(-R,0,i),P3(R,0,i),withA(C.pv,.18),1); }
+  for(let i=-G;i<=G;i+=2){ ln(g,P3(i,0,-R),P3(i,0,R),withA(C.pv,.18),1); ln(g,P3(-R,0,i),P3(R,0,i),withA(C.pv,.18),1); }
   const back=[[-R,-R],[R,-R],[R,0],[-R,0]].map(([x,y])=>PH3(x,y,th));
   const front=[[-R,0],[R,0],[R,R],[-R,R]].map(([x,y])=>PH3(x,y,th));
   poly(g,back,withA(C.ph,.05)); poly(g,front,withA(C.ph,.12));
-  for(let i=-6;i<=6;i+=2){ ln(g,PH3(i,-R,th),PH3(i,R,th),withA(C.ph,.2),1); ln(g,PH3(-R,i,th),PH3(R,i,th),withA(C.ph,.2),1); }
+  for(let i=-G;i<=G;i+=2){ ln(g,PH3(i,-R,th),PH3(i,R,th),withA(C.ph,.2),1); ln(g,PH3(-R,i,th),PH3(R,i,th),withA(C.ph,.2),1); }
   poly(g,[[-R,-R],[R,-R],[R,R],[-R,R]].map(([x,y])=>PH3(x,y,th)),null,withA(C.ph,.9),1.5);
   // LT
   ln(g,P3(-R-.6,0,0),P3(R+.6,0,0),C.ink,2.8);
-  for(let i=-6;i<=6;i++){ ln(g,PH3(i,0,th),PH3(i,.25,th),C.ink,1); if(i%2===0) txt(g,String(i),PH3(i,.95,th).x,PH3(i,.95,th).y,C.ink2,{size:9.5,align:'center',base:'middle',alpha:.9}); }
+  for(let i=-G;i<=G;i++){ ln(g,PH3(i,0,th),PH3(i,.25,th),C.ink,1); if(i%2===0) txt(g,String(i),PH3(i,.95,th).x,PH3(i,.95,th).y,C.ink2,{size:9.5,align:'center',base:'middle',alpha:.9}); }
   const lt=P3(R+.7,0,0); txt(g,'LT',lt.x+4,lt.y+4,C.ink,{size:13,bold:true,f:'"Barlow Semi Condensed",sans-serif'});
   const pvl=P3(-R+.3,0,R-.7); txt(g,'PV',pvl.x,pvl.y,C.pv,{size:14,bold:true,f:'"Barlow Semi Condensed",sans-serif'});
   const phl=PH3(R-.2,R-.9,th); txt(g,'PH',phl.x,phl.y,C.ph,{size:14,bold:true,f:'"Barlow Semi Condensed",sans-serif',align:'right'});
@@ -483,7 +489,7 @@ function sceneObj(){
   return pr.answered?pr.q.obj:null;
 }
 function draw3(){
-  const [w,h]=fit(cv3,ctx3); W3=w;H3=h; sc3=Math.min(w/19.5,h/21);
+  const [w,h]=fit(cv3,ctx3); W3=w;H3=h; updR(); sc3=R>7?Math.min(w/36,h/43):Math.min(w/19.5,h/21);
   const g=ctx3; g.clearRect(0,0,w,h); g.fillStyle=C.sheet; g.fillRect(0,0,w,h);
   const th=rad(st.theta);
   planes3(th);
@@ -576,7 +582,7 @@ function epObj(){
   return pr.q.obj;
 }
 function drawE(){
-  const [w,h]=fit(cvE,ctxE); WE=w;HE=h; scE=Math.min(w,h)/15.6; handles=[];
+  const [w,h]=fit(cvE,ctxE); WE=w;HE=h; updR(); scE=Math.min(w,h)/(R>7?25:15.6); handles=[];
   epBase();
   const o=epObj(); const drag=st.mod==='ponto'||st.mod==='reta';
   if(o){ if(o.kind==='ponto') ep_pt(o.p,'A',{dims:st.mod==='ponto',handles:drag}); else if(o.kind==='reta') ep_reta(o.A,o.B,{handles:drag}); else ep_plano(o.def); }
@@ -630,16 +636,16 @@ const PRE_PONTO=[['1','1º diedro',[2,3,4]],['2','2º diedro',[2,-3,4]],['3','3�
 const PRE_RETA=[['q','Qualquer',[-3,1,5,3,5,1]],['h','Horizontal',[-3,1,3,3,5,3]],['f','Frontal',[-3,3,1,3,3,5]],['fh','Fronto-horizontal',[-3,2,4,3,2,4]],['v','Vertical',[2,3,1,2,3,5]],['t','De topo',[2,1,3,2,5,3]],['p','De perfil',[2,1,5,2,5,1]]];
 function ctlPonto(){
   return `<h2 class="sec">Coordenadas do ponto A</h2>
-  ${slider('ponto.x','x · abscissa',-6,6,.5,'k-ink')}${slider('ponto.y','y · afastamento',-6,6,.5,'k-ph')}${slider('ponto.z','z · cota',-6,6,.5,'k-pv')}
+  ${slider('ponto.x','x · abscissa',-10,10,.5,'k-ink')}${slider('ponto.y','y · afastamento',-10,10,.5,'k-ph')}${slider('ponto.z','z · cota',-10,10,.5,'k-pv')}
   <h2 class="sec">Posições notáveis</h2>
   <div class="chips">${PRE_PONTO.map(([v,l])=>`<button class="chip" data-act="pre" data-v="${v}">${l}</button>`).join('')}</div>
   ${rebSec()}`;
 }
 function ctlReta(){
   return `<h2 class="sec">Ponto A</h2>
-  ${slider('reta.A.x','x',-6,6,.5,'k-ink')}${slider('reta.A.y','y · afast.',-6,6,.5,'k-ph')}${slider('reta.A.z','z · cota',-6,6,.5,'k-pv')}
+  ${slider('reta.A.x','x',-10,10,.5,'k-ink')}${slider('reta.A.y','y · afast.',-10,10,.5,'k-ph')}${slider('reta.A.z','z · cota',-10,10,.5,'k-pv')}
   <h2 class="sec">Ponto B</h2>
-  ${slider('reta.B.x','x',-6,6,.5,'k-ink')}${slider('reta.B.y','y · afast.',-6,6,.5,'k-ph')}${slider('reta.B.z','z · cota',-6,6,.5,'k-pv')}
+  ${slider('reta.B.x','x',-10,10,.5,'k-ink')}${slider('reta.B.y','y · afast.',-10,10,.5,'k-ph')}${slider('reta.B.z','z · cota',-10,10,.5,'k-pv')}
   <h2 class="sec">Retas notáveis</h2>
   <div class="chips">${PRE_RETA.map(([v,l])=>`<button class="chip" data-act="pre" data-v="${v}">${l}</button>`).join('')}</div>
   ${rebSec()}`;
@@ -648,13 +654,13 @@ function ctlPlano(){
   const pl=st.plano;
   const tipos=[['obl','Traços concorrentes'],['par','Paralelo à LT'],['lt','Contém a LT'],['hor','Horizontal'],['fro','Frontal'],['per','De perfil']];
   let h=`<h2 class="sec">Como o plano é dado</h2>${chips(tipos,'ptipo',pl.tipo)}<h2 class="sec">Parâmetros</h2>`;
-  if(pl.tipo==='obl') h+=slider('plano.x0','x₀ · concorrência',-5,5,.5,'k-ink')+slider('plano.ah','αh com a LT',10,170,1,'k-ph','°')+slider('plano.av','αv com a LT',10,170,1,'k-pv','°')+
+  if(pl.tipo==='obl') h+=slider('plano.x0','x₀ · concorrência',-10,10,.5,'k-ink')+slider('plano.ah','αh com a LT',10,170,1,'k-ph','°')+slider('plano.av','αv com a LT',10,170,1,'k-pv','°')+
     `<div class="chips" style="margin-top:8px"><button class="chip" data-act="pobl" data-v="60,50">Oblíquo</button><button class="chip" data-act="pobl" data-v="90,50">αh ⟂ LT (topo)</button><button class="chip" data-act="pobl" data-v="60,90">αv ⟂ LT (vertical)</button><button class="chip" data-act="pobl" data-v="90,90">Ambos ⟂ LT (perfil)</button></div>`;
-  else if(pl.tipo==='par') h+=slider('plano.y0','αh · afastamento',-6,6,.5,'k-ph')+slider('plano.z0','αv · cota',-6,6,.5,'k-pv');
+  else if(pl.tipo==='par') h+=slider('plano.y0','αh · afastamento',-10,10,.5,'k-ph')+slider('plano.z0','αv · cota',-10,10,.5,'k-pv');
   else if(pl.tipo==='lt') h+=slider('plano.t','inclinação',5,175,1,'k-obj','°')+`<div class="chips" style="margin-top:8px"><button class="chip" data-act="plt" data-v="45">β₁ (45°)</button><button class="chip" data-act="plt" data-v="135">β₂ (135°)</button></div>`;
-  else if(pl.tipo==='hor') h+=slider('plano.k','z · cota',-6,6,.5,'k-pv');
-  else if(pl.tipo==='fro') h+=slider('plano.k','y · afastamento',-6,6,.5,'k-ph');
-  else h+=slider('plano.k','x · abscissa',-6,6,.5,'k-ink');
+  else if(pl.tipo==='hor') h+=slider('plano.k','z · cota',-10,10,.5,'k-pv');
+  else if(pl.tipo==='fro') h+=slider('plano.k','y · afastamento',-10,10,.5,'k-ph');
+  else h+=slider('plano.k','x · abscissa',-10,10,.5,'k-ink');
   return h+rebSec();
 }
 function ctlPrat(){
@@ -875,7 +881,7 @@ cvE.addEventListener('pointerdown',e=>{
 cvE.addEventListener('pointermove',e=>{
   const pos=epPos(e);
   if(!dragE){ cvE.style.cursor=(st.mod==='prat'&&pr.q&&pr.q.kind==='marcar'&&!pr.answered)?'crosshair':hit(pos)?'grab':'default'; return; }
-  const x=clamp(snap(pos.x,.5),-6,6), ee=clamp(snap(pos.e,.5),-6,6);
+  const x=clamp(snap(pos.x,.5),-10,10), ee=clamp(snap(pos.e,.5),-10,10);
   if(st.mod==='ponto'){
     if(dragE==='p2'){ st.ponto.x=x; st.ponto.z=ee; } else { st.ponto.x=x; st.ponto.y=-ee; }
   }else if(st.mod==='reta'){
